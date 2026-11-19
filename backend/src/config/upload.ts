@@ -1,9 +1,10 @@
-
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 
-const uploadDirectory = path.resolve(__dirname, '../../uploads');
+export const uploadDirectory = process.env.VERCEL
+  ? path.resolve('/tmp/uploads')
+  : path.resolve(__dirname, '../../uploads');
 
 if (!fs.existsSync(uploadDirectory)) {
   fs.mkdirSync(uploadDirectory, { recursive: true });
@@ -34,5 +35,3 @@ export const upload = multer({
     cb(null, true);
   },
 });
-
-export { uploadDirectory };
