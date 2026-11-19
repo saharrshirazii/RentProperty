@@ -8,7 +8,7 @@ import Listning from '../models/Listning';
 import Favorite from '../models/Favorite';
 import Booking from '../models/Booking';
 import Message from '../models/Message';
-import property from '../models/property';
+import property from '../models/Property';
 
 export const exportUserData = async (req: Request, res: Response) => {
     try {

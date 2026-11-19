@@ -9,7 +9,7 @@ async function connectToDatabase(){
         console.log("Connected to Database.");
     }catch(error){
         console.error("Could not connect to MongoDB" , error);
-        process.exit(1);
+        throw error;
     }
 }
 export { connectToDatabase };

@@ -1,7 +1,8 @@
 import { Property } from '../types/property';
 
-const API_URL = 'http://localhost:3000/api/v1/properties';
-const LISTINGS_API_URL = 'http://localhost:3000/api/v1/listnings';
+const API_BASE_URL = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '');
+const API_URL = `${API_BASE_URL}/api/v1/properties`;
+const LISTINGS_API_URL = `${API_BASE_URL}/api/v1/listnings`;
 
 interface PropertiesResponse {
     status: string;

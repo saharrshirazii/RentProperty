@@ -335,10 +335,12 @@ export const reviewListning = async (req: Request, res: Response) => {
       return;
     }
 
+    const action = status === 'approved' ? 'APPROVE_LISTING' : status === 'needs_revision' ? 'REVISION_REQUEST' : 'REJECT_LISTING';
+
     // 1. Skapa logg för granskningsåtgärden
     await AdminLog.create({
       adminId,
-      action: status === 'approved' ? 'APPROVE_LISTING' : status === 'needs_revision' ? 'REVISION_REQUEST' : 'REJECT_LISTING',
+      action,
       targetId: req.params.id,
       reason: feedback ? String(feedback).trim() : 'Godkänd utan anmärkning'
     });

@@ -1,13 +1,11 @@
 // import express,  { Response, type Application, type Request } from 'express';
 import 'dotenv/config';
 import dotenv from 'dotenv';
+dotenv.config();
+
 import app from './app';
 import { connectToDatabase } from './config/database';
 //import connectDB from './config/database';
-
-
-
-dotenv.config();
 
 
 

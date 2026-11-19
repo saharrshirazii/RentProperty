@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { BeakerIcon, HomeIcon, MapPinIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { Property } from '../../types/property';
 import { FilterCategories } from '../FilterCategories/FilterCategories';
-import { getApprovedListings } from '../../api/propertyApi';
+import { getApprovedListings, getProperties } from '../../api/propertyApi';
 import FilterSection from '../FilterSection/FilterSection';
 import Hero from '../Hero/Hero';
 import { HeroSearchBar } from '../HeroSearchBar/HeroSearchBar';
@@ -65,34 +65,68 @@ const checkOut = queryParams.get('checkOut') || "";
     setPage(1);
   }, [search, category, price]);
 
-  // The fetch wrapper execution block
-  useEffect(() => {
-    const fetchProperties = async () => {
-      setLoading(true);
-      try {
-// <<<<<<< HEAD
-//         const response = await getProperties(page, category, price, searchLocation, searchGuests, checkIn, checkOut);
-//         if (response) {
-//           setProperties(response.data);
-//           setTotalPages(response.pagination?.totalPages || 1);
-//           setTotalResults(response.pagination?.totalProperties || 0);
-        const approvedListings = await getApprovedListings(category);
-        if (approvedListings) {
-          setProperties(approvedListings);
-          setTotalResults(approvedListings.length);
-          setTotalPages(1);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-      } finally {
-        setLoading(false);
+
+// useEffect(() => {
+//   const fetchProperties = async () => {
+//     setLoading(true);
+//     try {
+//       // 1. Restore the fully featured API fetch engine
+//       const response = await getProperties(
+//         page, 
+//         category, 
+//         price, 
+//         searchLocation, 
+//         searchGuests, 
+//         checkIn, 
+//         checkOut
+//       );
+      
+//       if (response) {
+//         // 2. If your team requires an approval step, filter them dynamically:
+//         // const approvedOnly = response.data.filter((item: any) => item.isApproved === true);
+//         // setProperties(approvedOnly);
+        
+//         // Otherwise, render all matching entries directly:
+//         setProperties(response.data);
+        
+//         setTotalPages(response.pagination?.totalPages || 1);
+//         setTotalResults(response.pagination?.totalProperties || response.data.length);
+//       }
+//     } catch (err) {
+//       console.error("Fetch error:", err);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+//   fetchProperties();
+// }, [page, category, price, searchLocation, searchGuests, checkIn, checkOut]);
+
+
+useEffect(() => {
+  const fetchProperties = async () => {
+    setLoading(true);
+    try {
+      // 1. If getApprovedListings is your dedicated frontend API function for this:
+      const approvedData = await getApprovedListings(category);
+      if (approvedData) {
+        setProperties(approvedData);
+        setTotalResults(approvedData.length);
+        setTotalPages(1);
       }
-    };
+      
+      // OR 2. If getProperties supports a filter flag (recommended for pagination):
+      // const response = await getProperties(page, category, price, searchLocation, searchGuests, checkIn, checkOut, { status: 'approved' });
+      // if (response) { ... }
 
-    fetchProperties();
-  // }, [page, category, price, searchLocation, searchGuests , checkIn, checkOut]); 
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  }, [category]);
+  fetchProperties();
+}, [category]);
 
   return (
     <div>
@@ -182,13 +216,24 @@ const checkOut = queryParams.get('checkOut') || "";
 const PropertyCard: React.FC<{ property: Property }> = ({ property }) => {
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const imageUrl = property.images && property.images.length > 0
-    ? (typeof property.images[0] === 'string'
-      ? property.images[0]
-      : (property.images[0] as any).url?.startsWith('http')
-        ? (property.images[0] as any).url
-        : `http://localhost:3000${(property.images[0] as any).url}`)
-    : 'https://via.placeholder.com/400';
+  const resolveImageUrl = (image?: string | { id?: string; url: string; filename?: string }) => {
+    if (!image) return 'https://via.placeholder.com/400';
+
+    if (typeof image === 'string') {
+      return image.startsWith('http')
+        ? image
+        : `http://localhost:3000${image.startsWith('/') ? '' : '/'}${image}`;
+    }
+
+    const imagePath = image.url || (image.filename ? `/uploads/${image.filename}` : '');
+    if (!imagePath) return 'https://via.placeholder.com/400';
+
+    return imagePath.startsWith('http')
+      ? imagePath
+      : `http://localhost:3000${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+  };
+
+  const imageUrl = resolveImageUrl(property.images?.[0]);
 
     useEffect(() => {
       const checkFavoriteStatus = async () => {

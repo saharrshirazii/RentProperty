@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express'
 import {NotFoundError , ValidationError} from '../errors/AppError'
 import mongoose from 'mongoose'
-import Property from '../models/Property';
 import Booking from '../models/Booking';
 import {logger} from './../logger/logger'
+import Property from '../models/Property';
 
 
 
@@ -63,10 +63,11 @@ export const getProperties = async (req: Request, res: Response, next: NextFunct
                     endDate: {$gt : searchStart}
                 }).select('propertyId');
 
+                const busyPropertyIds = overlappingBookings
+                    .map((b: any) => b.propertyId)
+                    .filter(Boolean);
 
-                const busyPropertyIds = overlappingBookings.map((b: any) => b.PropertyId);
-
-                filter._id = {$nin: busyPropertyIds};
+                filter._id = { $nin: busyPropertyIds };
                 //INFO LOG
                 logger.info(
                     { overlappingCount: busyPropertyIds.length, checkIn, checkOut },

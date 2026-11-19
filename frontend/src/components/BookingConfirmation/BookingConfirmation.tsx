@@ -1,10 +1,28 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
-import { getProperties } from '../../api/propertyApi'
 import { Property } from '../../types/property';
 import CheckIn from '../Checkin/Checkin';
 import { GiConfirmed } from 'react-icons/gi';
 
+type ListingImage = {
+  id?: string;
+  originalName?: string;
+  filename?: string;
+  mimetype?: string;
+  size?: number;
+  url?: string;
+};
+
+const resolveImageUrl = (image?: string | ListingImage) => {
+  if (!image) return 'https://via.placeholder.com/400';
+
+  if (typeof image === 'string') {
+    return image.startsWith('http') ? image : `http://localhost:3000${image.startsWith('/') ? '' : '/'}${image}`;
+  }
+
+  const imagePath = image.url || (image.filename ? `/uploads/${image.filename}` : '');
+  return imagePath.startsWith('http') ? imagePath : `http://localhost:3000${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+};
 
 export default function BookingConfirmation() {
     const { id } = useParams();
@@ -38,7 +56,7 @@ export default function BookingConfirmation() {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
 
-    //fetch individual peroperty profile context
+    //fetch individual property / listing context
     useEffect(() => {
         const fetchPropertyDetails = async () => {
             if (!id) {
@@ -47,24 +65,34 @@ export default function BookingConfirmation() {
             }
 
             try {
-                const url = `http://localhost:3000/api/v1/properties/${id}`;
-                console.log("Fetching from full URL:", url); // 🔍 Debug log 2
+                const url = `http://localhost:3000/api/v1/listnings/${id}`;
+                console.log("Fetching from full URL:", url);
 
                 const response = await fetch(url);
-                console.log("HTTP Response Status:", response.status); // 🔍 Debug log 3
+                console.log("HTTP Response Status:", response.status);
 
                 const json = await response.json();
-                console.log("Raw JSON response body received:", json); // 🔍 Debug log 4
+                console.log("Raw JSON response body received:", json);
 
-                // Handle both wrapped payloads and raw direct objects safely:
-                if (json.status === 'success' && json.data) {
-                    setProperty(json.data);
-                } else if (json._id || json.id) {
-                    // Fallback if your backend sends the property directly without a data wrapper
-                    setProperty(json);
-                } else {
+                const rawProperty = json?.data || json;
+                if (!rawProperty || (!rawProperty._id && !rawProperty.id)) {
                     console.warn("Received JSON data structure did not match expected layout keys.");
+                    return;
                 }
+
+                setProperty({
+                    ...rawProperty,
+                    _id: rawProperty._id || rawProperty.id,
+                    pricePerNight: rawProperty.price ?? rawProperty.pricePerNight ?? 0,
+                    location: rawProperty.location || 'Sverige',
+                    guests: rawProperty.guests ?? 1,
+                    bedrooms: rawProperty.bedrooms ?? 0,
+                    bathrooms: rawProperty.bathrooms ?? 0,
+                    category: rawProperty.propertyType || rawProperty.category || 'Lägenhet',
+                    rating: rawProperty.rating ?? 4.5,
+                    reviewsCount: rawProperty.reviewsCount ?? 0,
+                    images: rawProperty.images || [],
+                } as Property);
             } catch (err) {
                 console.error("Network fetch operation threw an exception:", err);
             }
@@ -284,7 +312,7 @@ export default function BookingConfirmation() {
                 <div className="lg:col-span-1">
                     <div className="sticky top-6 border border-gray-300 bg-white rounded-2xl shadow-sm overflow-hidden p-6 mt-15 space-y-6">
                         <div className="flex gap-4">
-                            <img src={`http://localhost:3000/assets/${property.images?.[0]}`} alt={property.title} className="w-24 h-24 object-cover rounded-xl" />
+                            <img src={resolveImageUrl(property.images?.[0])} alt={property.title} className="w-24 h-24 object-cover rounded-xl" />
                             <div>
                                 <h3 className="font-bold text-gray-900 leading-tight">{property.title}</h3>
                                 <p className="text-xs text-gray-400 mt-1">{property.location}</p>
@@ -453,7 +481,7 @@ export default function BookingConfirmation() {
                         </div>
                         {/* Image */}
                         <div className='p-4'>
-                            <img src={`http://localhost:3000/assets/${property.images?.[0]}`} alt={property.title} className="w-full h-40 object-cover rounded-2xl  overflow-hidden" />
+                            <img src={resolveImageUrl(property.images?.[0])} alt={property.title} className="w-full h-40 object-cover rounded-2xl overflow-hidden" />
 
                         </div>
                         {/* Quick summary preview block */}

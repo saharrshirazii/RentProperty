@@ -44,34 +44,43 @@ const handleNav = (tab: string) => {
 
 
 
-  //update the count of bookings in basket
+  // update the count of bookings in basket
+  const isLoggedIn = !!localStorage.getItem('token');
 
-  const getToken = localStorage.getItem('token');
-  const isLoggedIn = !!getToken;
   useEffect(() => {
-  const fetchBookingCount = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:3000/api/v1/bookings/my-bookings",
-        {
-          headers: {
-            Authorization: `Bearer ${getToken}`,
-          },
-        }
-      );
-
-      const json = await response.json();
-
-      if (response.ok) {
-        setBookingCount(json.data.length);
+    const fetchBookingCount = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setBookingCount(0);
+        return;
       }
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
-  fetchBookingCount();
-}, []);
+      try {
+        const response = await fetch(
+          "http://localhost:3000/api/v1/bookings/my-bookings",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            console.warn('Booking count fetch blocked by auth:', response.status);
+          }
+          return;
+        }
+
+        const json = await response.json();
+        setBookingCount(json.data?.length ?? 0);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchBookingCount();
+  }, [isLoggedIn]);
 
 
   return (

@@ -35,3 +35,10 @@ const PropertySchema: Schema = new Schema({
 }, { timestamps: true }); // Automatically adds createdAt and updatedAt
 
 export default mongoose.model<IProperty>('Property', PropertySchema);
+
+
+// const Property =
+//   mongoose.models.Property ||
+//   mongoose.model<IProperty>('Property', PropertySchema);
+
+// export default Property;

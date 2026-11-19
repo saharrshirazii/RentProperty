@@ -42,7 +42,9 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel, onC
   // Safety fallback for formatting asset URLs safely
   const formatImgUrl = (url: string) => {
     if (!url) return 'https://via.placeholder.com/400';
-    return url.startsWith('http') ? url : `http://localhost:3000/assets/${url}`;
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/uploads/')) return `http://localhost:3000${url}`;
+    return `http://localhost:3000/${url}`;
   };
 
   return (
@@ -123,20 +125,22 @@ export const BookingCard: React.FC<BookingCardProps> = ({ booking, onCancel, onC
                 <span className="text-base font-black text-gray-900">{totalPrice.toLocaleString()} kr</span>
               </div>
               <div>
-                <button
-                  onClick={() =>
-                    navigate(`/properties/${property._id}/checkout`, {
-                      state: {
-                        bookingId: booking._id,
-                        checkIn: startDate,
-                        checkOut: endDate,
-                        guestsCount: property.guests
-                      }
-                    })
-                  }
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-xl">
-                  Gå till betalning
-                </button>
+                {booking.paymentStatus !== 'paid' && (
+                  <button
+                    onClick={() =>
+                      navigate(`/properties/${property._id}/checkout`, {
+                        state: {
+                          bookingId: booking._id,
+                          checkIn: startDate,
+                          checkOut: endDate,
+                          guestsCount: property.guests
+                        }
+                      })
+                    }
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-xl">
+                    Gå till betalning
+                  </button>
+                )}
               </div>
             </div>
           </div>

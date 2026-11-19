@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import Booking from "../models/Booking";
 import Property from "../models/Property";
+import Listning from "../models/Listning";
 import User from "../models/User";
 import { sendBookingConfirmation, sendPaymentConfirmation } from "../config/nodemailer";
 import {logger} from './../logger/logger'
@@ -71,10 +72,12 @@ export const createBooking = async (req: Request, res: Response, next: NextFunct
             return;
         }
 
-        // 3. Get property
+        // 3. Get target listing / property
         const property = await Property.findById(propertyId);
+        const listning = property ? null : await Listning.findById(propertyId);
+        const target = property || listning;
 
-        if (!property) {
+        if (!target) {
             //WARN LOG
             logger.warn({ propertyId }, "Bokningen misslyckades – Målfastigheten finns inte");
             res.status(404).json({
@@ -84,12 +87,15 @@ export const createBooking = async (req: Request, res: Response, next: NextFunct
             return;
         }
 
-        // 4. Calculate price
+        // 4. Calculate price using whichever model is available
         const totalNights = Math.ceil(
             (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
         );
 
-        const totalPrice = totalNights * property.pricePerNight;
+        const pricePerNight =
+            (target as any).pricePerNight ?? (target as any).price ?? 0;
+
+        const totalPrice = totalNights * pricePerNight;
 
         // 5. Create booking
         const booking = await Booking.create({
@@ -112,7 +118,7 @@ logger.info({ bookingId: booking._id, userId, totalPrice }, "Bokningen har spara
             sendBookingConfirmation({
                 email: user.email,
                 guestName: user.name,
-                propertyTitle: property.title,
+                propertyTitle: (target as any).title,
                 checkIn: start.toLocaleDateString("sv-SE"),
                 checkOut: end.toLocaleDateString("sv-SE"),
                 totalPrice,
@@ -142,7 +148,11 @@ export const payBooking = async (req: Request, res: Response, next: NextFunction
         const bookingId = req.params.id;
         //INFO LOG
         logger.info({ bookingId }, "Bearbetar bokningsbetalningsförfrågan");
-        const booking = await Booking.findById(req.params.id).populate("propertyId");
+        const booking = await Booking.findById(req.params.id).populate({
+            path: "propertyId",
+            model: "Listning",
+            select: "title location"
+        });
 
         if (!booking) {
             //WARN LOG
@@ -212,14 +222,34 @@ export const getMyBookings = async (req: Request, res: Response, next: NextFunct
         const bookings = await Booking.find({ userId })
             .populate({
                 path: 'propertyId',
-                select: 'title location images pricePerNight'
+                model: 'Listning',
+                select: 'title location images price guests bedrooms bathrooms propertyType'
             })
             .sort('-createdAt');
 
+        // Transform bookings to match frontend expectations
+        const transformedBookings = bookings.map((booking: any) => {
+            const listning = booking.propertyId;
+            return {
+                ...booking.toObject(),
+                propertyId: {
+                    _id: listning?._id,
+                    title: listning?.title,
+                    location: listning?.location,
+                    pricePerNight: listning?.price || 0,
+                    guests: listning?.guests || 1,
+                    bedrooms: listning?.bedrooms || 0,
+                    bathrooms: listning?.bathrooms || 0,
+                    category: listning?.propertyType || 'Lägenhet',
+                    images: listning?.images?.map((img: any) => img.url || `/uploads/${img.filename}`) || [],
+                }
+            };
+        });
+
         res.status(200).json({
             status: 'success',
-            results: bookings.length,
-            data: bookings,
+            results: transformedBookings.length,
+            data: transformedBookings,
         });
 
     } catch (error: any) {
@@ -236,7 +266,11 @@ export const getBookingById = async (req: Request, res: Response, next: NextFunc
         const bookingId = req.params.id;
         //INFO LOG
         logger.info({ bookingId, userId: req.user?.id }, "Hämtar detaljer om fristående bokningsinstans");
-        const booking = await Booking.findById(req.params.id).populate('propertyId');
+        const booking = await Booking.findById(req.params.id).populate({
+            path: 'propertyId',
+            model: 'Listning',
+            select: 'title location images price guests bedrooms bathrooms propertyType'
+        });
 
         if (!booking) {
             //WARN LOG
@@ -255,7 +289,24 @@ export const getBookingById = async (req: Request, res: Response, next: NextFunc
             return;
         }
 
-        res.status(200).json({ status: 'success', data: booking });
+        // Transform booking to match frontend expectations
+        const listning = (booking as any).propertyId;
+        const transformedBooking = {
+            ...booking.toObject(),
+            propertyId: {
+                _id: listning?._id,
+                title: listning?.title,
+                location: listning?.location,
+                pricePerNight: listning?.price || 0,
+                guests: listning?.guests || 1,
+                bedrooms: listning?.bedrooms || 0,
+                bathrooms: listning?.bathrooms || 0,
+                category: listning?.propertyType || 'Lägenhet',
+                images: listning?.images?.map((img: any) => img.url || `/uploads/${img.filename}`) || [],
+            }
+        };
+
+        res.status(200).json({ status: 'success', data: transformedBooking });
     } catch (error: any) {
         //ERROR LOG
         logger.error({ err: error.message, bookingId: req.params.id }, "Fel i hanteraren för enskild bokningsfråga");

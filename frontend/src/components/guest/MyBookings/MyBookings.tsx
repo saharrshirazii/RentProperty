@@ -57,8 +57,11 @@ useEffect(() => {
 
 
 //handle checkout
-const handleCheckout = (booking: BookingData) => {
-  navigate(`/properties/${booking.propertyId}/checkout`, {
+const handleCheckout = (propertyId: string) => {
+  const booking = bookings.find(b => b.propertyId._id === propertyId);
+  if (!booking) return;
+
+  navigate(`/properties/${propertyId}/checkout`, {
     state: {
       bookingId: booking._id,
       checkIn: booking.startDate,

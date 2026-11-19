@@ -7,12 +7,10 @@ export const CheckoutPage: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [property, setProperty] = useState<Property | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const bookingId = (location.state as any)?.bookingId;
     
-
-
-
-
     const {
         checkIn = "",
         checkOut = "",
@@ -20,9 +18,34 @@ export const CheckoutPage: React.FC = () => {
     } = (location.state as any) || {};
 
     useEffect(() => {
-  fetch(`http://localhost:3000/api/v1/properties/${id}`)
-    .then(res => res.json())
-    .then(data => setProperty(data.data)); 
+  setLoading(true);
+  setError(null);
+  fetch(`http://localhost:3000/api/v1/listnings/${id}`)
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      const listning = data.data || data;
+      setProperty({
+        ...listning,
+        _id: listning._id || listning.id,
+        pricePerNight: listning.price ?? listning.pricePerNight ?? 0,
+        location: listning.location || 'Sverige',
+        guests: listning.guests ?? 1,
+        bedrooms: listning.bedrooms ?? 0,
+        bathrooms: listning.bathrooms ?? 0,
+        category: listning.propertyType || listning.category || 'Lägenhet',
+        rating: listning.rating ?? 4.5,
+        reviewsCount: listning.reviewsCount ?? 0,
+        images: listning.images || [],
+      } as Property);
+    })
+    .catch(err => {
+      console.error('Error fetching listing:', err);
+      setError('Kunde inte hämta bokningsuppgifter. Försök igen senare.');
+    })
+    .finally(() => setLoading(false));
 }, [id]);
 
     //match Processing calculations
@@ -45,8 +68,10 @@ export const CheckoutPage: React.FC = () => {
     const totalFinalPrice = rawBasePrice + serviceFee;
 
 
-    if (!property) return <div>Laddar checkout...</div>;
-    if (!checkIn || !checkOut) return <div>Saknar bokningsdata</div>;
+    if (loading) return <div className="text-center py-20 text-gray-500">Laddar checkout...</div>;
+    if (error) return <div className="text-center py-20 text-red-500">{error}</div>;
+    if (!property) return <div className="text-center py-20 text-gray-500">Bokningen kunde inte hämtas.</div>;
+    if (!checkIn || !checkOut) return <div className="text-center py-20 text-gray-500">Saknar bokningsdata</div>;
 
 
 
