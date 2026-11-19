@@ -16,7 +16,8 @@ function LogIn({ onToggle }: LoginProps) {
   const handleLogin = async () => {
     setError(""); // Rensa tidigare fel
     try {
-      const response = await fetch("http://localhost:3000/api/v1/auth/login", {
+      const apiBaseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '';
+      const response = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

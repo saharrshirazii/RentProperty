@@ -31,8 +31,9 @@ function Register({ onToggle }: RegisterProps) {
       return;
     }
 
+    const apiBaseUrl = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '';
     try {
-      const response = await fetch("http://localhost:3000/api/v1/auth/register", {
+      const response = await fetch(`${apiBaseUrl}/api/v1/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, role: role.toLowerCase() }),
